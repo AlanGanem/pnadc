@@ -135,7 +135,7 @@ def build(data_file, input_file='input_PNADC_trimestral.txt', keep_columns=[], d
     return pyPNAD.load(data_file, input_file, del_file=del_file, keep_columns=keep_columns)
 
 
-def query(q, input_file='input_PNADC_trimestral.txt'):
+def query(q, input_file='input_PNADC_trimestral.txt', path = '.'):
     """Returns a python dictionary containing the survey description about
     a desired variable.
 
@@ -146,6 +146,8 @@ def query(q, input_file='input_PNADC_trimestral.txt'):
         Query variable.
     input_file : str, optional
         The .txt dicionary file. The default is 'input_PNADC_trimestral.txt'.
+    path : str, optional
+        the path of the file in which to look for input_file
 
     Returns
     -------
@@ -153,6 +155,7 @@ def query(q, input_file='input_PNADC_trimestral.txt'):
         dict object wtith 'column' and 'desc' as keys.
 
     """
+    input_file = Path(path)/input_file
     columns, widths, var = pyPNAD.col_widths(input_file)
     var = [{'column': i['name'], 'desc': i['comment']} for i in var]
     return next((item for item in var if item["column"] == q), None)
