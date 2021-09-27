@@ -38,8 +38,8 @@ def unzip(file_name, exdirpath='', keep_zipfile=True):
     return zipfile.ZipFile(file_name).namelist()[0]  # returns first file name
 
 class extract:
-        
-    def get_urls(protocol = 'ftp'):        
+
+    def get_urls(protocol = 'ftp'):
         _URL_PNADC = f'{protocol}://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/Trimestral/Microdados/'
         _URL_DOCS = _URL_PNADC + 'Documentacao/'
         return _URL_PNADC, _URL_DOCS
@@ -63,15 +63,15 @@ class extract:
             url = _URL_PNADC + str(year)
             text = extract._url_response(url)
             search = re.findall('PNADC_0+' + str(quarter) + str(year) + '.*\.zip',
-                                text)            
+                                text)
 
             search[0] = search[0].split('">')[0]
             if not search:
                 print("Query 0" + str(quarter) + str(year) + " not found.")
                 raise Exception
-            else:                
+            else:
                 query_url = url + '/' + search[0]
-                
+
                 return extract._downloader(search=search[0], query_url=query_url,
                                            path=path, unzip_file=unzip_file, **kwargs)
         except Exception as e:
@@ -158,18 +158,18 @@ def query(q, input_file='input_PNADC_trimestral.txt'):
     return next((item for item in var if item["column"] == q), None)
 
 
-def mkdir(path):	
-	"""
-	creates directory if does not exist
-	"""
-	path = Path(path)
-	if not path.exists():
-		path.mkdir() 
-	return
+def mkdir(path):
+    """
+    creates directory if does not exist
+    """
+    path = Path(path)
+    if not path.exists():
+        path.mkdir()
+    return
 
 def get(
     quarter, year, path='', get_docs=True, keep_columns=[],
-     select_files=[], save_only=False, del_file=True, protocol = 'ftp',**kwargs,
+    select_files=[], save_only=False, del_file=True, protocol = 'ftp', **kwargs,
      ):
     """Download the desired survey database year range and save them as csv.
 
@@ -192,23 +192,26 @@ def get(
     select_files : list, optional
         Select which doc files you wish to download/extract. The default is
         ['Dicionario_e_input.zip'].
+    protocol : String, optional, optional
+        transfer protocol (defaults to "ftp", but "https" or other can be used)
     **kwargs
 
     Returns
     -------
     data : df.DataFrame
         Returns PNADC DataFrame if sy == False.
+        :param save_only:
 
     """
     mkdir(path)
-    
+
     if get_docs:
         extract.docs(path=path, select_files=select_files, protocol = protocol,**kwargs)
     data_file = extract.data(quarter=quarter, year=year, path=path, protocol = protocol, **kwargs)
-    
+
     data_file = Path(path)/data_file
     input_file = Path(path)/'input_PNADC_trimestral.txt'
-    
+
     data = build(data_file, input_file,
                  keep_columns=keep_columns, del_file=del_file)
     if not save_only:
@@ -245,7 +248,7 @@ def get_all(range_years, path='', get_docs=True, keep_columns=[], select_files=[
 
     """
     mkdir(path)
-    
+
     if get_docs:
         extract.docs(path=path, select_files=select_files, protocol = protocol,**kwargs)
 
@@ -256,8 +259,8 @@ def get_all(range_years, path='', get_docs=True, keep_columns=[], select_files=[
             if data_file is None:
                 break
             else:
-            	data_file = Path(path)/data_file
-            	input_file = Path(path)/'input_PNADC_trimestral.txt'                
+                data_file = Path(path)/data_file
+                input_file = Path(path)/'input_PNADC_trimestral.txt'
                 data = build(data_file, input_file,
                              keep_columns=keep_columns)
                 save(data, path + 'PNADC_0' + str(quarter) + str(year))
