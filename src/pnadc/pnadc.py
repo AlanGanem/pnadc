@@ -3,6 +3,7 @@
 import re
 import urllib.request
 import zipfile
+from pathlib import Path
 
 from .pypnad import os
 from .pypnad import pd
@@ -36,10 +37,12 @@ def unzip(file_name, exdirpath='', keep_zipfile=True):
         os.remove(file_name)
     return zipfile.ZipFile(file_name).namelist()[0]  # returns first file name
 
-
 class extract:
-    _URL_PNADC = 'ftp://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/Trimestral/Microdados/'
-    _URL_DOCS = _URL_PNADC + 'Documentacao/'
+        
+    def get_urls(protocol = 'ftp'):        
+        _URL_PNADC = f'{protocol}://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/Trimestral/Microdados/'
+        _URL_DOCS = _URL_PNADC + 'Documentacao/'
+        return _URL_PNADC, _URL_DOCS
 
     def _url_response(url):
         return str(urllib.request.urlopen(url).read().decode('utf-8'))
@@ -51,34 +54,40 @@ class extract:
         if unzip_file and search[-3:] == "zip":
             return unzip(path + search, exdirpath=path, **kwargs)
 
-    def data(quarter, year, path='', unzip_file=True, **kwargs):
+    def data(quarter, year, path='', unzip_file=True, protocol = 'ftp',**kwargs):
+
+        _URL_PNADC, _URL_DOCS = extract.get_urls(protocol = protocol)
 
         try:
             quarter = int(quarter)
-            url = extract._URL_PNADC + str(year)
+            url = _URL_PNADC + str(year)
             text = extract._url_response(url)
             search = re.findall('PNADC_0+' + str(quarter) + str(year) + '.*\.zip',
-                                text)
+                                text)            
+
+            search[0] = search[0].split('">')[0]
             if not search:
                 print("Query 0" + str(quarter) + str(year) + " not found.")
                 raise Exception
-            else:
+            else:                
                 query_url = url + '/' + search[0]
+                
                 return extract._downloader(search=search[0], query_url=query_url,
                                            path=path, unzip_file=unzip_file, **kwargs)
         except Exception as e:
             print(e)
             return
 
-    def query_docs():
-        text = extract._url_response(extract._URL_DOCS)
+    def query_docs(protocol = 'ftp'):
+        _URL_PNADC, _URL_DOCS = extract.get_urls(protocol = protocol)
+        text = extract._url_response(_URL_DOCS)
         pattern = '([A-z_0-9-]+\.xls|[A-z_0-9-]+\.zip|[A-z_0-9-]+\.pdf|[A-z_0-9-]+\.xlsx)'
         return re.findall(pattern=pattern, string=text)
 
-    def docs(path='', select_files=[], unzip_file=True, **kwargs):
+    def docs(path='', select_files=[], unzip_file=True, protocol = 'ftp', **kwargs):
 
         try:
-            search = extract.query_docs()
+            search = extract.query_docs(protocol = protocol)
             if not search:
                 print("Nothing found.")
                 raise Exception
@@ -87,16 +96,17 @@ class extract:
                     select_files = search
                 extract._extract_docs(search=search, path=path,
                                       select_files=select_files,
-                                      unzip_file=unzip_file,
+                                      unzip_file=unzip_file, protocol = protocol,
                                       **kwargs)
         except Exception as e:
             print(e)
             pass
 
-    def _extract_docs(search, path, select_files, unzip_file, **kwargs):
+    def _extract_docs(search, path, select_files, unzip_file, protocol = 'ftp', **kwargs):
+        _URL_PNADC, _URL_DOCS = extract.get_urls(protocol = protocol)
         for i in search:
             if i in select_files:
-                query_url = extract._URL_DOCS + i
+                query_url = _URL_DOCS + i
                 extract._downloader(search=i, query_url=query_url, path=path,
                                     unzip_file=unzip_file, **kwargs)
 
@@ -148,7 +158,19 @@ def query(q, input_file='input_PNADC_trimestral.txt'):
     return next((item for item in var if item["column"] == q), None)
 
 
-def get(quarter, year, path='', get_docs=True, keep_columns=[], select_files=[], save_only=False, del_file=True, **kwargs):
+def mkdir(path):
+    """
+    creates directory if does not exist
+    """
+    path = Path(path)
+    if not path.exists():
+        path.mkdir()
+    return
+
+def get(
+    quarter, year, path='', get_docs=True, keep_columns=[],
+     select_files=[], save_only=False, del_file=True, protocol = 'ftp',**kwargs,
+     ):
     """Download the desired survey database year range and save them as csv.
 
     Parameters
@@ -178,10 +200,16 @@ def get(quarter, year, path='', get_docs=True, keep_columns=[], select_files=[],
         Returns PNADC DataFrame if sy == False.
 
     """
+    mkdir(path)
+    
     if get_docs:
-        extract.docs(path=path, select_files=select_files, **kwargs)
-    data_file = extract.data(quarter=quarter, year=year, path=path, **kwargs)
-    data = build(data_file, path + 'input_PNADC_trimestral.txt',
+        extract.docs(path=path, select_files=select_files, protocol = protocol,**kwargs)
+    data_file = extract.data(quarter=quarter, year=year, path=path, protocol = protocol, **kwargs)
+    
+    data_file = Path(path)/data_file
+    input_file = Path(path)/'input_PNADC_trimestral.txt'
+    
+    data = build(data_file, input_file,
                  keep_columns=keep_columns, del_file=del_file)
     if not save_only:
         return data
@@ -189,7 +217,7 @@ def get(quarter, year, path='', get_docs=True, keep_columns=[], select_files=[],
         save(data, path + 'PNADC_0' + str(quarter) + str(year))
 
 
-def get_all(range_years, path='', get_docs=True, keep_columns=[], select_files=[], **kwargs):
+def get_all(range_years, path='', get_docs=True, keep_columns=[], select_files=[], protocol = 'ftp', **kwargs):
     """Download the desired survey database year range and save them as csv.
 
     Parameters
@@ -216,12 +244,14 @@ def get_all(range_years, path='', get_docs=True, keep_columns=[], select_files=[
     None.
 
     """
+    mkdir(path)
+    
     if get_docs:
-        extract.docs(path=path, select_files=select_files, **kwargs)
+        extract.docs(path=path, select_files=select_files, protocol = protocol,**kwargs)
 
     for year in range_years:
         for quarter in [1, 2, 3, 4]:
-            data_file = extract.data(quarter=quarter, year=year, path=path, **kwargs)
+            data_file = extract.data(quarter=quarter, year=year, path=path, protocol = protocol, **kwargs)
 
             if data_file is None:
                 break
