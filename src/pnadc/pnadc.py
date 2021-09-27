@@ -256,7 +256,9 @@ def get_all(range_years, path='', get_docs=True, keep_columns=[], select_files=[
             if data_file is None:
                 break
             else:
-                data = build(data_file, path + 'input_PNADC_trimestral.txt',
+            	data_file = Path(path)/data_file
+            	input_file = Path(path)/'input_PNADC_trimestral.txt'                
+                data = build(data_file, input_file,
                              keep_columns=keep_columns)
                 save(data, path + 'PNADC_0' + str(quarter) + str(year))
                 del data
