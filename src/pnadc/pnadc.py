@@ -159,14 +159,14 @@ def query(q, input_file='input_PNADC_trimestral.txt'):
 
 
 def mkdir(path):	
-    """
-    creates directory if does not exist
-    """
-    path = Path(path)
-    if not path.exists():
-        path.mkdir() 
+	"""
+	creates directory if does not exist
+	"""
+	path = Path(path)
+	if not path.exists():
+		path.mkdir() 
 	return
-	
+
 def get(
     quarter, year, path='', get_docs=True, keep_columns=[],
      select_files=[], save_only=False, del_file=True, protocol = 'ftp',**kwargs,
